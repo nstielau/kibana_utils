@@ -1,5 +1,5 @@
 # kibana_utils
-============
+--------------
 
 Fabric-based utilities for working with Kibana (backups, etc)
 
@@ -9,9 +9,9 @@ Primarily, this is used to back up Kibana dashboards that are stored in ElasticS
 
 These pip packages are required:
 
-* pip install requests
-* pip install boto
-* pip install fabric
+* `pip install requests`
+* `pip install boto`
+* `pip install fabric`
 
 ## Configuration
 
@@ -46,4 +46,3 @@ Run a task
 Run a parameterized task
 
 `fab -f fabfile.py restore_dashboards:some_backup.json`
-
