@@ -25,7 +25,7 @@ ELASTIC_SEARCH_PORT = os.environ.get('KIBANA_PORT', 9200)
 # Helpers
 
 def _es_url(path):
-    'http://{0}:{1}/{2}'.format(ELASTIC_SEARCH_HOST, ELASTIC_SEARCH_PORT, path)
+    return 'http://{0}:{1}/{2}'.format(ELASTIC_SEARCH_HOST, ELASTIC_SEARCH_PORT, path)
 
 def _get_boto_connection():
     return boto.connect_s3()
