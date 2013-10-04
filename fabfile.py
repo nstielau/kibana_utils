@@ -76,7 +76,7 @@ def verify_backups():
                 print "Backup is empty"
                 sys.exit(1)
             elif created_ago > 60*60*24*2:
-                print "No recent backup found"
+                print "No recent backup found (last upload is {0} seconds old)".format(created_ago)
                 sys.exit(1)
             else:
               print "Backup is recent and non-empty"
