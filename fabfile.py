@@ -126,7 +126,7 @@ def list_backups():
 @task
 def print_backup(key):
     """Shows contents of a backup on S3"""
-    print _get_backup().get_contents_as_string()
+    print _get_backup_object(key).get_contents_as_string()
 
 @task
 def backup():
