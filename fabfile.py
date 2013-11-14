@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+import re
 import datetime
 from dateutil import parser
 import json
@@ -15,15 +16,18 @@ import requests
 
 from fabric.api import *
 
-BUCKET_NAME = os.environ['KIBANA_BUCKET']
-PATH_PREFIX = os.environ['KIBANA_PREFIX']
-
 ELASTIC_SEARCH_HOST = os.environ.get('KIBANA_HOST', 'localhost')
 ELASTIC_SEARCH_PORT = os.environ.get('KIBANA_PORT', 9200)
 
 ###############
 # Helpers
 
+def _get_s3_bucket_vars():
+    global BUCKET_NAME, PATH_PREFIX
+    BUCKET_NAME = os.environ['KIBANA_BUCKET']
+    PATH_PREFIX = os.environ['KIBANA_PREFIX']
+
+#_get_s3_bucket_vars()
 def _es_url(path):
     return 'http://{0}:{1}/{2}'.format(ELASTIC_SEARCH_HOST, ELASTIC_SEARCH_PORT, path)
 
@@ -32,6 +36,7 @@ def _get_boto_connection():
 
 def _get_backup_key(format=None):
     """Get backup key given the specified format"""
+    _get_s3_bucket_vars()
     suffix = _get_time_string(format)
     return '%s/dashboard_backup_%s.json' % (PATH_PREFIX, suffix)
 
@@ -43,12 +48,34 @@ def _get_dashboards():
     """Query dashboards stored in ElasticSearch"""
     return requests.get(_es_url('/kibana-int/dashboard/_search?q=*')).text
 
+def _get_dashboard(id):
+    """Query dashboard by name/id in ElasticSearch"""
+    data = json.loads(requests.get(_es_url('/kibana-int/dashboard/{0}'.format(id))).text)
+    return data['_source']
+
 def _create_dashboard(id, data):
     """Create a dashboard with the id and data provided"""
-    requests.post(_es_url('/kibana-int/dashboard/{0}'.format(id)), data)
+    if isinstance(data, dict):
+        data = json.dumps(data)
+    r = requests.put(_es_url('/kibana-int/dashboard/{0}'.format(id)), data)
+    if r.status_code == requests.codes.ok:
+        return True
+    else:
+        raise Exception("Failed, status: {0}. Body: {1}".format(r.status_code, r.text))
+
+def _convert_dashboard_v0_v1(data_str):
+    """Convert a kibana dashboard using logstash event-v0 style keys to v1
+
+    NOTE: this converter is naive. It takes a json string and simply regexes on
+          common patterns.
+    """
+    data_str = re.sub("@fields.", "", data_str)
+    data_str = re.sub(r"@((?!timestamp)[a-zA-Z\d\-_]+)", r"\1", data_str)
+    return data_str
 
 def _get_backup_object(key):
     """Get boto object from key"""
+    _get_s3_bucket_vars()
     conn = _get_boto_connection()
     bucket = conn.get_bucket(BUCKET_NAME)
     for item in bucket.list():
@@ -57,6 +84,7 @@ def _get_backup_object(key):
     return None
 
 def _get_backup_objects():
+    _get_s3_bucket_vars()
     conn = _get_boto_connection()
     bucket = conn.get_bucket(BUCKET_NAME)
     return bucket.list()
@@ -108,6 +136,32 @@ def restore_dashboards(backup_key):
         print "Could not find backup '{0}'".format(backup_key)
 
 @task
+def export_dashboard(name, filename):
+    """Get dashboard by name from ElasticSearch. args: name (required), filename (required)"""
+    with open(filename, 'w') as f:
+        f.write(json.dumps(_get_dashboard(name)))
+    print "Dashboard exported to: {0}".format(filename)
+
+@task
+def import_dashboard(name, filename):
+    """import a dashboard from json file. args: name (required), filename (required)"""
+    with open(filename) as f:
+        data = json.load(f)
+    if _create_dashboard(name, data) == True:
+        print "Success."
+    else:
+        print "FAILED."
+
+@task
+def convert_dashboard_v0_v1(orig_filename, new_filename):
+    """convert an exported kibana dashboard using logstash event-v0 fields to event-v1 fields. args: orig_filename (required), new_filename (required)"""
+    orig_contents = ''
+    with open(orig_filename, 'r') as orig_fd:
+        orig_contents = orig_fd.read()
+    with open(new_filename, 'w') as new_fd:
+        new_fd.write(_convert_dashboard_v0_v1(orig_contents))
+
+@task
 def list_dashboards():
     """Lists the dashboard from ElasticSearch"""
     dashboards = json.loads(_get_dashboards())['hits']['hits']
@@ -118,6 +172,7 @@ def list_dashboards():
 @task(default=True)
 def list_backups():
     """Lists backups on S3"""
+    _get_s3_bucket_vars()
     for item in _get_backup_objects():
         if PATH_PREFIX in item.key and not item.key.endswith('/'):
             size = len(item.get_contents_as_string())
@@ -131,6 +186,7 @@ def print_backup(key):
 @task
 def backup():
     """Backups up dashboards from Elastic Search"""
+    _get_s3_bucket_vars()
     conn = _get_boto_connection()
     bucket = conn.get_bucket(BUCKET_NAME)
 
