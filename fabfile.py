@@ -58,7 +58,7 @@ def _create_dashboard(id, data):
     if isinstance(data, dict):
         data = json.dumps(data)
     r = requests.put(_es_url('/kibana-int/dashboard/{0}'.format(id)), data)
-    if r.status_code == requests.codes.ok:
+    if r.status_code in [requests.codes.ok, 201]:
         return True
     else:
         raise Exception("Failed, status: {0}. Body: {1}".format(r.status_code, r.text))
