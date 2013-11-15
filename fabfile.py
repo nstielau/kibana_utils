@@ -7,6 +7,7 @@ import json
 import os
 import sys
 import time
+import socket
 
 import boto
 import boto.s3
@@ -27,7 +28,6 @@ def _get_s3_bucket_vars():
     BUCKET_NAME = os.environ['KIBANA_BUCKET']
     PATH_PREFIX = os.environ['KIBANA_PREFIX']
 
-#_get_s3_bucket_vars()
 def _es_url(path):
     return 'http://{0}:{1}/{2}'.format(ELASTIC_SEARCH_HOST, ELASTIC_SEARCH_PORT, path)
 
@@ -38,7 +38,7 @@ def _get_backup_key(format=None):
     """Get backup key given the specified format"""
     _get_s3_bucket_vars()
     suffix = _get_time_string(format)
-    return '%s/dashboard_backup_%s.json' % (PATH_PREFIX, suffix)
+    return '%s/%s-dashboard_backup_%s.json' % (PATH_PREFIX, socket.gethostname(), suffix)
 
 def _get_time_string(format):
     """Return a string of the current date using the given format"""
