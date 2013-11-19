@@ -108,6 +108,8 @@ def verify_backups():
                 sys.exit(1)
             else:
               print "Backup is recent and non-empty"
+    print "No backups found"
+    sys.exit(1)
 
 @task
 def delete_dashboards():
