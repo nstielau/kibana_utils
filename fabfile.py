@@ -108,6 +108,7 @@ def verify_backups():
                 sys.exit(1)
             else:
               print "Backup is recent and non-empty"
+              sys.exit(0)
     print "No backups found"
     sys.exit(1)
 
