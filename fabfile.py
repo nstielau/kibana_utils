@@ -196,9 +196,7 @@ def backup():
     dashboard_dump = _get_dashboards()
 
     backup_paths = []
-    backup_paths.append(_get_backup_key("%A")) # day of week
-    backup_paths.append(_get_backup_key("%B")) # month of year
-    backup_paths.append(_get_backup_key('today')) # today!
+    backup_paths.append(_get_backup_key("%Y-%m-%d__%H-%M")) # timestamp
 
     for key_path in backup_paths:
         print 'Uploading backup to Amazon S3 bucket %s/%s' % (BUCKET_NAME, key_path)
