@@ -17,8 +17,8 @@ import requests
 
 from fabric.api import *
 
-ELASTIC_SEARCH_HOST = os.environ.get('KIBANA_HOST', 'localhost')
-ELASTIC_SEARCH_PORT = os.environ.get('KIBANA_PORT', 9200)
+ELASTIC_SEARCH_HOST = os.environ.get('ELASTIC_SEARCH_HOST', 'localhost')
+ELASTIC_SEARCH_PORT = os.environ.get('ELASTIC_SEARCH_PORT', 9200)
 
 ###############
 # Helpers
@@ -29,7 +29,7 @@ def _get_s3_bucket_vars():
     PATH_PREFIX = os.environ['KIBANA_PREFIX']
 
 def _es_url(path):
-    return 'http://{0}:{1}/{2}'.format(ELASTIC_SEARCH_HOST, ELASTIC_SEARCH_PORT, path)
+    return 'http://{0}:{1}{2}'.format(ELASTIC_SEARCH_HOST, ELASTIC_SEARCH_PORT, path)
 
 def _get_boto_connection():
     return boto.connect_s3()
@@ -46,7 +46,7 @@ def _get_time_string(format):
 
 def _get_dashboards():
     """Query dashboards stored in ElasticSearch"""
-    return requests.get(_es_url('/kibana-int/dashboard/_search?q=*')).text
+    return requests.get(_es_url('/kibana-int/dashboard/_search?q=*&size=1000')).text
 
 def _get_dashboard(id):
     """Query dashboard by name/id in ElasticSearch"""
