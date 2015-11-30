@@ -7,11 +7,7 @@ Primarily, this is used to back up Kibana dashboards that are stored in ElasticS
 
 ## Requirements
 
-These pip packages are required:
-
-* `pip install requests`
-* `pip install boto`
-* `pip install fabric`
+* `pip install -r requirements.txt`
 
 ## Configuration
 
