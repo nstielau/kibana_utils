@@ -89,6 +89,29 @@ def _get_backup_objects():
     bucket = conn.get_bucket(BUCKET_NAME)
     return bucket.list()
 
+def _do_backup(backup_formats=None):
+    """Backups up dashboards from Elastic Search"""
+    if not backup_formats:
+        raise ValueError("You must supply backup path formats")
+
+    _get_s3_bucket_vars()
+    conn = _get_boto_connection()
+    bucket = conn.get_bucket(BUCKET_NAME)
+
+    dashboard_dump = _get_dashboards()
+
+    backup_paths = []
+    for backup_format in backup_formats:
+        backup_paths.append(_get_backup_key(backup_format))
+
+    for key_path in backup_paths:
+        print 'Uploading backup to Amazon S3 bucket %s/%s' % (BUCKET_NAME, key_path)
+        # Update the dashboard backup
+        k = Key(bucket)
+        k.key = key_path
+        k.set_contents_from_string(dashboard_dump)
+
+
 ###############
 # Tasks
 
@@ -187,23 +210,17 @@ def print_backup(key):
     print _get_backup_object(key).get_contents_as_string()
 
 @task
-def backup():
-    """Backups up dashboards from Elastic Search"""
-    _get_s3_bucket_vars()
-    conn = _get_boto_connection()
-    bucket = conn.get_bucket(BUCKET_NAME)
-
-    dashboard_dump = _get_dashboards()
-
-    backup_paths = []
-    backup_paths.append(_get_backup_key("%Y-%m-%d__%H-%M")) # timestamp
-
-    for key_path in backup_paths:
-        print 'Uploading backup to Amazon S3 bucket %s/%s' % (BUCKET_NAME, key_path)
-        # Update the dashboard backup
-        k = Key(bucket)
-        k.key = key_path
-        k.set_contents_from_string(dashboard_dump)
+def backup(*backup_formats):
+    """Backups up dashboards from Elastic Search.
+    Takes path formats as args, and will interpolate python date strings.
+    i.e.
+    `fab backup:%A,today` will yield a backup file HOSTNAME-DAYOFWEEK.json and HOSTNAME-today.json
+    or you can get fancy:
+    `fab backup:"%Y-%m-%d__%H-%M"`
+    by default, it will store one backup per day for a week, one backup per month for a year.
+    """
+    default_backup_formats = ["%A", "%B", "today"]
+    _do_backup(backup_formats or default_backup_formats)
 
 if __name__ == '__main__':
    backup()
